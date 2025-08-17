@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Env files
+.env
+.env.*
+.venv/
+venv/
+
+# Logs
+logs/
+*.log
+bot_errors.log
+
+# Packaging
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# IDE/editor
+.vscode/
+.idea/
+.DS_Store
+
+# Coverage & caches
+htmlcov/
+.coverage*
+.cache/
+.pytest_cache/
