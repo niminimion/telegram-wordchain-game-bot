@@ -64,6 +64,10 @@ class WordProcessor:
             normalized_word, validation_error = self._validate_word_format(word)
             if validation_error:
                 return validation_error.result, validation_error.message
+
+            # Enforce no-repeat rule (words are case-insensitive; we store normalized)
+            if normalized_word in game_state.used_words:
+                return GameResult.INVALID_WORD, f"'{word}' has already been used"
             
             # Check game-specific requirements
             letter_error = self._validate_starting_letter(normalized_word, game_state.current_letter)
@@ -86,6 +90,8 @@ class WordProcessor:
             
             # Word is valid
             logger.info(f"Valid word '{normalized_word}' submitted by player {player_id}")
+            # Record word as used only on success
+            game_state.used_words.add(normalized_word)
             return GameResult.VALID_WORD, None
         
         except Exception as e:

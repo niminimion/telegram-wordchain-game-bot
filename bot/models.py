@@ -69,6 +69,7 @@ class GameState:
     turn_start_time: Optional[datetime] = None
     timer_task: Optional[asyncio.Task] = None
     game_config: GameConfig = field(default_factory=GameConfig)
+    used_words: set[str] = field(default_factory=set)
     
     # New fields for improved game flow
     is_waiting_for_players: bool = True  # True during 1-minute waiting period
