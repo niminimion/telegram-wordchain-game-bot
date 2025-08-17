@@ -68,7 +68,15 @@ class TimerManager:
         """
         if chat_id in self._active_timers:
             timer_task = self._active_timers[chat_id]
-            
+            current_task = asyncio.current_task()
+
+            # Avoid cancelling/awaiting the currently running timer task (self)
+            if timer_task is current_task:
+                # Just remove mapping; the timer will finish on its own
+                del self._active_timers[chat_id]
+                logger.debug(f"Skipped self-cancel and removed mapping for chat {chat_id}")
+                return True
+
             if not timer_task.done():
                 timer_task.cancel()
                 try:
@@ -156,9 +164,9 @@ class TimerManager:
                             try:
                                 # Call warning callback
                                 if asyncio.iscoroutinefunction(warning_callback):
-                                    await warning_callback(chat_id, remaining)
+                                    await warning_callback(chat_id, int(remaining))
                                 else:
-                                    warning_callback(chat_id, remaining)
+                                    warning_callback(chat_id, int(remaining))
                                 
                                 warnings_sent.add(warning_time)
                                 logger.debug(f"Sent {remaining}s warning for chat {chat_id}")
@@ -192,8 +200,8 @@ class TimerManager:
             logger.error(f"Unexpected error in timer for chat {chat_id}: {e}")
         
         finally:
-            # Clean up timer reference
-            if chat_id in self._active_timers:
+            # Clean up timer reference only if mapping still points to this task
+            if chat_id in self._active_timers and self._active_timers[chat_id] is asyncio.current_task():
                 del self._active_timers[chat_id]
 
 
@@ -230,6 +238,9 @@ class GameTimerManager:
         if game_state.timer_task and not game_state.timer_task.done():
             game_state.timer_task.cancel()
         
+        # Reset turn start time to now to align with the timer
+        game_state.turn_start_time = datetime.now()
+
         # Start new timer
         timer_task = await self.timer_manager.start_turn_timer(
             chat_id=chat_id,
@@ -244,6 +255,26 @@ class GameTimerManager:
         
         logger.info(f"Started turn timer for chat {chat_id}")
         return True
+
+    async def enforce_timeout_if_needed(self, chat_id: int) -> bool:
+        """Enforce timeout immediately if the current turn has already expired.
+
+        Returns True if a timeout was enforced.
+        """
+        try:
+            game_state = self.game_manager.get_game_status(chat_id)
+            if not game_state or not game_state.is_active:
+                return False
+
+            remaining = game_state.get_remaining_turn_time()
+            if remaining is not None and remaining <= 0:
+                await self._handle_timeout(chat_id)
+                return True
+
+            return False
+        except Exception as e:
+            logger.error(f"Error enforcing timeout for chat {chat_id}: {e}")
+            return False
     
     async def cancel_turn_timer(self, chat_id: int) -> bool:
         """
@@ -384,3 +415,7 @@ class GameTimerManager:
         """Clean up all timers."""
         await self.timer_manager.cancel_all_timers()
         logger.info("Game timer manager cleaned up")
+
+    def is_turn_timer_active(self, chat_id: int) -> bool:
+        """Check if a turn timer is active for the chat."""
+        return self.timer_manager.is_timer_active(chat_id)

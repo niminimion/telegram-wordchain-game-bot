@@ -442,7 +442,7 @@ class TelegramBot:
                 # ALWAYS send announcement for valid words
                 if updated_state and submitting_player:
                     try:
-                        # 1. 发送"提交成功"公告
+                        # 1. Send "submission successful" announcement
                         hints = self.game_manager.get_word_hints(chat_id)
                         announcement = self.announcer.formatter.format_valid_word_announcement(
                             message_text, submitting_player, updated_state, hints
@@ -454,7 +454,7 @@ class TelegramBot:
                             parse_mode=ParseMode.MARKDOWN
                         )
                         
-                        # 2. 发送"下一轮挑战"提示
+                        # 2. Send "next challenge" announcement
                         if updated_state.is_active:
                             try:
                                 next_announcement = self.announcer.formatter.format_next_turn_announcement(updated_state)
@@ -465,7 +465,7 @@ class TelegramBot:
                                 )
                             except Exception as e:
                                 logger.error(f"Error sending next turn announcement: {e}")
-                                # 备用简单提示
+                                # Fallback simple announcement
                                 current_player = updated_state.get_current_player()
                                 if current_player:
                                     simple_next = f"🎯 Next Challenge:\n👤 Turn: {current_player.display_name}\n🔤 Letter: **{updated_state.current_letter}**\n📏 Length: {updated_state.required_length} letters"
@@ -475,13 +475,17 @@ class TelegramBot:
                         logger.error(f"Error sending valid word announcement: {e}")
                         # Fallback to basic feedback
                         await update.message.reply_text(f"✅ {submitting_player.display_name} submitted '{message_text}'")
-                        
-                        # 3. 启动下一回合计时器
-                        if updated_state.is_active:
+                    
+                    # 3. Start timer for next turn (MOVED OUTSIDE THE TRY/EXCEPT)
+                    if updated_state and updated_state.is_active:
+                        # If turn already expired while composing messages, enforce timeout
+                        timed_out = await self.timer_manager.enforce_timeout_if_needed(chat_id)
+                        if not timed_out:
                             await self.timer_manager.start_turn_timer(chat_id)
-                    else:
-                        # Fallback if no updated state or submitting player
-                        await update.message.reply_text(feedback)
+                        
+                else:
+                    # Fallback if no updated state or submitting player
+                    await update.message.reply_text(feedback)
             
             elif result in [GameResult.INVALID_LETTER, GameResult.INVALID_LENGTH, 
                           GameResult.INVALID_WORD, GameResult.VALIDATION_ERROR]:

@@ -232,6 +232,13 @@ class GameManager:
         eliminated_player = current_player
         game_state.remove_player(current_player.user_id)
         
+        # After removal, current_player_index already points to the next player
+        # (or 0 if the removed was the last). Do NOT advance again, just ensure
+        # we are pointing at an active player and reset the turn start time.
+        if len(game_state.players) > 1:
+            game_state.skip_inactive_players()
+            game_state.turn_start_time = datetime.now()
+        
         # Check if game should end (only one or no players left)
         if len(game_state.players) <= 1:
             # Game ends - mark as inactive but don't delete yet (let announcer handle it)
