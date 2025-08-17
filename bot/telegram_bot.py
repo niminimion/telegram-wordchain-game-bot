@@ -418,6 +418,12 @@ class TelegramBot:
             game_state = self.game_manager.get_game_status(chat_id)
             if not game_state or not game_state.is_active:
                 return  # Ignore messages when no game is active
+
+            # If the turn already expired (timer failed to fire), enforce timeout now
+            timed_out = await self.timer_manager.enforce_timeout_if_needed(chat_id)
+            if timed_out:
+                # Timeout handler already advanced the game and started the next timer
+                return
             
             # Get the submitting player BEFORE processing the word
             submitting_player = None
