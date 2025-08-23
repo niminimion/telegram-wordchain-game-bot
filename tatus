@@ -1,0 +1,4 @@
+[33m2bf264f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Guard: enforce overdue turn timeout upon incoming message; improve robustness
+[33m2338ed7[m Enforce no-repeat words with used_words set; minor timer/announcement alignment
+[33m159e275[m Fix timeout enforcement: prevent double-advance, reset turn_start_time, align timer with turn start, int warnings, enforce immediate timeout if overdue
+[33m4bd3b1d[m Initial commit: Telegram word chain game bot (secrets sanitized, env documented)
